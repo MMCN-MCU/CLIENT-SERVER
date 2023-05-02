@@ -1,7 +1,6 @@
 const express = require("express");
 const http = require("http");
 const socketIO = require("socket.io");
-const cors = require("cors");
 
 const app = express();
 
@@ -23,6 +22,9 @@ app.get("/", (req, res) => {
 wsServer.on("connection", (socket) => {
   socket.on("join", (data) => {
     console.log(data);
+  });
+  socket.on("build", (roomName) => {
+    console.log(roomName);
   });
 });
 
