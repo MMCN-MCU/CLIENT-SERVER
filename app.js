@@ -32,7 +32,12 @@ app.use(express.static(path.join(__dirname, "public")));
 // Express 서버 설정
 app.get("/", (req, res) => {
   // 동적으로 페이지 생성
-  res.render("index", { connections: Object.keys(connections), IP, port });
+  res.render("index", {
+    connections: Object.keys(connections),
+    IP,
+    port,
+    hasVideo: false,
+  });
 });
 
 // 비디오 id 종류 받아오기

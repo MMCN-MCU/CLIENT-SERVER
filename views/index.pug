@@ -14,10 +14,11 @@ html
     div(id="videoWrapper")
       //- 수신 중인 영상 데이터가 있는 경우
       if connections.length > 0
-        each id, el in connections
-          div(class="videoContainer")
-            img(id="videoFrame"+id, class="videoFrame", src="/videos/"+id)
-            h2(class="videoTag") 디바이스 ID #{id} 
+        div(class="video--available")
+          each id, el in connections
+            div(class="videoContainer")
+              img(id="videoFrame"+id, class="videoFrame", src="/videos/"+id)
+              h2(class="videoTag") 디바이스 ID #{id} 
       //- 수신 중인 영상 데이터가 없는 경우
       else
         div(class="video--empty")
@@ -32,6 +33,9 @@ html
 
     //- Script 태그 부분
     script.
+
+      //- 직전에 video 있었는지 여부
+      let hasVideoBefore = false;
 
       //- connection 데이터 갱신
       const fetchConnections = async () => {
@@ -48,11 +52,13 @@ html
         const d = new Date();
         const $ = document;
         const wrapper = $.querySelector("#videoWrapper");
+        const availableWrapper = $.querySelector(".video--available");
+        const emptyWrapper = $.querySelector(".video--empty");
 
         const on_connections = connections.map(connection => connection+'');
-        const off_connections = Array.from(wrapper.childNodes).map(child => child.firstChild.id.slice(10))
+        const off_connections = availableWrapper ? Array.from(availableWrapper.childNodes).map(child => child.firstChild.id.slice(10)) : [];
 
-        //- on, off 비교
+        //- on, off 비교 (동적으로 video 영상 부착 및 제거)
         const diffing = () => {
           let result = false;
           //- on에 있다 + off에 없다 : 새로 추가된 것
@@ -71,7 +77,7 @@ html
               // DOM에 부착
               container.appendChild(img);
               container.appendChild(h2);
-              wrapper.appendChild(container);
+              availableWrapper.appendChild(container);
               return;
             }
           })
@@ -79,23 +85,86 @@ html
           //- on에 없다 + off에 있다 : 제거된 것
           off_connections.forEach(off => {
             if(!on_connections.find(on => on === off)) {
-              wrapper.removeChild(Array.from(wrapper.childNodes).filter(child => child.firstChild.id.slice(10) === off)[0])
+              availableWrapper.removeChild(Array.from(availableWrapper.childNodes).filter(child => child.firstChild.id.slice(10) === off)[0])
               return;
             }
           })
           return;
         }
 
-        diffing();
+        //- 영상 데이터 있는 경우 DOM node 생성
+        const createAvailableWrapper = () => {
+          const container = $.createElement("div");
+          container.classList.add("video--available");
+          return container;
+        }
 
-        connections.forEach(id => {
+        //- 영상 데이터 없는 경우 DOM node 생성
+        const createEmptyWrapper = () => {
+          const createKeyVal = () => {
+            const key_val = $.createElement("div");
+            key_val.classList.add("key--val");
+            return key_val;
+          }
+
+          const createKey = (content) => {
+            const key = $.createElement("span");
+            key.classList.add("key");
+            key.textContent = content;
+            return key;
+          }
+
+          const createVal = (content) => {
+            const val = $.createElement("span");
+            val.classList.add("val");
+            val.textContent = content;
+            return val;
+          }
+
+          const container = $.createElement("div");
+          container.classList.add("video--empty");
+          const warning = $.createElement("div");
+          warning.classList.add("empty--warning");
+          warning.textContent="수신 중인 영상 데이터가 없습니다!";
+          const ip_port = $.createElement("div");
+          ip_port.classList.add("ip-port");
+          const ip = createKeyVal();
+          ip.appendChild(createKey("IP 주소"));
+          ip.appendChild(createVal(`#{IP}`));
+          const port = createKeyVal();
+          port.appendChild(createKey("Port 번호"));
+          port.appendChild(createVal(`#{port}`));
+
+          ip_port.appendChild(ip);
+          ip_port.appendChild(port);
+          container.appendChild(warning);
+          container.appendChild(ip_port);
+
+          return container;
+        }
+
+        if(connections.length > 0) {
+          if(!hasVideoBefore) {
+            wrapper.innerHTML = '';
+            wrapper.appendChild(createAvailableWrapper());
+            hasVideoBefore = true;
+          }
+          diffing();
+          
+          connections.forEach(id => {
           let res = $.getElementById('videoFrame'+id).src = "/videos/"+id+"?" + d.getTime();
         })
+        }
+        else {
+          wrapper.innerHTML = '';
+          wrapper.appendChild(createEmptyWrapper());
+          hasVideoBefore = false;
+        }
 
       };
 
       // interval Wrapper
-      const intervalWrapper = async () => {
+      const intervalConstructor = async () => {
         let connections = [#{connections}];
         try {
           //- 2초 간격으로 비디오 데이터 갱신
@@ -112,5 +181,5 @@ html
         }, 100);
       }
 
-      // 
-      window.onload = intervalWrapper;
+      // window load된 경우 intervalConstructor 실행
+      window.onload = intervalConstructor;
