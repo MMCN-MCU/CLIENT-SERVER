@@ -1,0 +1,24 @@
+doctype html
+html
+  head
+    title Video Stream
+  body
+    div(id="videoWrapper")
+      each id in connections
+        img(id="videoFrame"+id, class="videoFrame", src="/videos/"+id)
+    script.
+      //- image 주소 fetching
+      const fetcher = () => {
+        let d = new Date();
+        let connections = [#{connections}];
+        connections.forEach(id => {
+          document.getElementById('videoFrame'+id).src = "/videos/"+id+"?" + d.getTime();
+        })
+      };
+
+      //- setInterval로 0.1초에 한번씩 이미지 데이터 받아오기
+      const fetchInterval = setInterval(() => {
+        fetcher();
+      }, 100);
+
+      window.onload = fetchInterval;
