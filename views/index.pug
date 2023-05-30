@@ -2,23 +2,115 @@ doctype html
 html
   head
     title Video Stream
+    script(src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js")
+    link(rel="stylesheet", href="/reset.css")
+    link(rel="stylesheet", href="/global.css")
   body
+    //- Header
+    header 
+      a(href="/") MCU Client
+
+    //- Video Wrapper
     div(id="videoWrapper")
-      each id in connections
-        img(id="videoFrame"+id, class="videoFrame", src="/videos/"+id)
+      //- 수신 중인 영상 데이터가 있는 경우
+      if connections.length > 0
+        each id, el in connections
+          div(class="videoContainer")
+            img(id="videoFrame"+id, class="videoFrame", src="/videos/"+id)
+            h2(class="videoTag") 디바이스 ID #{id} 
+      //- 수신 중인 영상 데이터가 없는 경우
+      else
+        div(class="video--empty")
+          div(class="empty--warning") 수신 중인 영상 데이터가 없습니다!
+          div(class="ip-port")
+            div(class="key--val")
+              span(class="key") IP 주소
+              span(class="val") #{IP}
+            div(class="key--val")
+              span(class="key") Port 번호
+              span(class="val") #{port}
+
+    //- Script 태그 부분
     script.
-      //- image 주소 fetching
-      const fetcher = () => {
-        let d = new Date();
-        let connections = [#{connections}];
+
+      //- connection 데이터 갱신
+      const fetchConnections = async () => {
+        try {
+          connections = await axios.get("/videos/count");
+          return connections.data;
+        } catch(err) {
+          throw err;
+        }
+      }
+
+      //- image 주소 fetching + 영상 데이터 최신화
+      const fetchVideo = (connections) => {
+        const d = new Date();
+        const $ = document;
+        const wrapper = $.querySelector("#videoWrapper");
+
+        const on_connections = connections.map(connection => connection+'');
+        const off_connections = Array.from(wrapper.childNodes).map(child => child.firstChild.id.slice(10))
+
+        //- on, off 비교
+        const diffing = () => {
+          let result = false;
+          //- on에 있다 + off에 없다 : 새로 추가된 것
+          on_connections.forEach(on => {
+            if(!off_connections.find(off => off === on)) {
+              result = true;
+              // 노드 생성 및 속성 추가
+              const container = $.createElement("div");
+              container.classList.add("videoContainer")
+              const img = $.createElement("img");
+              img.classList.add("videoFrame");
+              img.setAttribute("id", "videoFrame" + on);
+              const h2 = $.createElement("h2");
+              h2.classList.add("videoTag");
+              h2.textContent = "디바이스 ID " + on;
+              // DOM에 부착
+              container.appendChild(img);
+              container.appendChild(h2);
+              wrapper.appendChild(container);
+              return;
+            }
+          })
+          if(result) return;
+          //- on에 없다 + off에 있다 : 제거된 것
+          off_connections.forEach(off => {
+            if(!on_connections.find(on => on === off)) {
+              wrapper.removeChild(Array.from(wrapper.childNodes).filter(child => child.firstChild.id.slice(10) === off)[0])
+              return;
+            }
+          })
+          return;
+        }
+
+        diffing();
+
         connections.forEach(id => {
-          document.getElementById('videoFrame'+id).src = "/videos/"+id+"?" + d.getTime();
+          let res = $.getElementById('videoFrame'+id).src = "/videos/"+id+"?" + d.getTime();
         })
+
       };
 
-      //- setInterval로 0.1초에 한번씩 이미지 데이터 받아오기
-      const fetchInterval = setInterval(() => {
-        fetcher();
-      }, 100);
+      // interval Wrapper
+      const intervalWrapper = async () => {
+        let connections = [#{connections}];
+        try {
+          //- 2초 간격으로 비디오 데이터 갱신
+          setInterval(async() => {
+            connections = await fetchConnections();
+          }, 2000)
+        } catch(err) {
+          consol.log(err)
+        }
 
-      window.onload = fetchInterval;
+        //- 0.1초 간격으로 비디오 데이터 받아옴
+        setInterval(() => {
+          fetchVideo(connections);
+        }, 100);
+      }
+
+      // 
+      window.onload = intervalWrapper;

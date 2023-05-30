@@ -1,0 +1,87 @@
+/* body */
+body {
+  font-family: sans-serif;
+}
+
+/* header */
+header {
+  width: 100%;
+  padding: 24px;
+  margin-bottom: 12px;
+  font-size: 32px;
+  font-weight: 600;
+  background-color: #2563eb;
+}
+
+header > a {
+  text-decoration: none;
+  color: white;
+}
+
+/* IP, PORT 번호 관련 (비디오 없는 경우)*/
+.video--empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.empty--warning {
+  font-size: 36px;
+  font-weight: 600;
+}
+
+.ip-port {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.key--val {
+  display: flex;
+  gap: 12px;
+}
+
+.key--val > .key {
+  min-width: 128px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.key--val > .val {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+/* video 관련 스타일링 (비디오 있는 경우)*/
+#videoWrapper {
+  padding: 108px 24px;
+  display: grid;
+  grid-template-columns: 400px 400px 400px;
+  gap: 12px;
+}
+
+.videoContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+}
+
+.videoFrame {
+  width: 400px;
+  height: 360px;
+  object-fit: contain;
+  background: #e5e7eb;
+  border-radius: 12px;
+}
+
+.videoTag {
+  font-size: 20px;
+  font-weight: 500;
+}

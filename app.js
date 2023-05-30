@@ -32,7 +32,12 @@ app.use(express.static(path.join(__dirname, "public")));
 // Express 서버 설정
 app.get("/", (req, res) => {
   // 동적으로 페이지 생성
-  res.render("index", { connections: Object.keys(connections) });
+  res.render("index", { connections: Object.keys(connections), IP, port });
+});
+
+// 비디오 id 종류 받아오기
+app.get("/videos/count", (req, res) => {
+  res.send(JSON.stringify(Object.keys(connections)));
 });
 
 // 비디오 데이터 (프레임 단위 이미지 데이터) 송신
@@ -44,11 +49,6 @@ app.get("/videos/:id", (req, res) => {
   }
 
   res.sendFile(__dirname + `/videos/${id}.jpg`);
-});
-
-// 비디오 id 종류 받아오기
-app.get("/videos/count", (req, res) => {
-  res.send(Object.keys(connections));
 });
 
 // HTTP 연결 포트 정의
