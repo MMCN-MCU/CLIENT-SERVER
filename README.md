@@ -21,10 +21,10 @@
 ## 실행방식
 
 1. 해당 repository를 pull 받는다
-2. node app.js 로 서버 프로그램 실행
+2. node server.js 로 서버 프로그램 실행
 
 ```js
-node app.js
+node server.js
 ```
 
 ## 개선이 필요한 지점
