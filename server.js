@@ -31,6 +31,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Express 서버 설정
 app.get("/", (req, res) => {
+  console.log(connections, Object.keys(connections));
   // 동적으로 페이지 생성
   res.render("index", {
     connections: Object.keys(connections),
@@ -72,40 +73,47 @@ server.on("connection", (socket) => {
   // 새로운 클라이언트가 연결될 때마다 로그를 출력합니다.
   console.log("New client connected");
 
-  // connection 수 갱신
+  // connection 수 갱신, 받은 frame 수 계산
   let id = connectionCounter++;
 
   // 새로운 Connection 생성
   connections[id] = { size: 0, data: Buffer.alloc(0) };
   console.log(`New client connected: ${id}`);
 
-  // data 수신 시에 호출 (새로운 프레임 데이터 수신 시마다 실행)
   socket.on("data", (chunk) => {
-    // size가 0, chunk 길이 4 이상인 경우, chunck에서 size 값 읽어옴 -> connections[id].size에 값 넣음
-    if (connections[id].size === 0 && chunk.length >= 4) {
-      connections[id].size = chunk.readUInt32BE(0);
-      chunk = chunk.slice(4);
-    }
-
-    // connections[id].data에 수신한 프레임 데이터 chunk 추가
+    // 현재 연결에 데이터 추가
     connections[id].data = Buffer.concat([connections[id].data, chunk]);
 
-    // connections[id].data에 저장된 데이터 사이즈가 충분한 경우 /videos 폴더에 이미지 데이터 추가 (id.jpg 로 저장)
-    if (connections[id].data.length >= connections[id].size) {
-      fs.writeFile(
-        `./videos/${id}.jpg`,
-        connections[id].data.slice(0, connections[id].size),
-        (err) => {
-          if (err) throw err;
-          console.log(`Frame saved for client ${id}!`);
-        }
-      );
+    // 새로운 데이터가 있을 때마다 반복
+    while (
+      connections[id].data.length >= 4 &&
+      connections[id].data.length >= connections[id].size + 4
+    ) {
+      if (connections[id].size === 0) {
+        // 첫 4바이트에서 데이터의 크기를 읽는다 (big endian 순서)
+        connections[id].size = connections[id].data.readUInt32BE(0);
+      }
 
-      // connections[id].data에 저장된 내용 frame 사이즈 만큼 slice 쳐서 버리기
-      connections[id].data = connections[id].data.slice(connections[id].size);
+      if (connections[id].data.length >= connections[id].size + 4) {
+        // 수신한 데이터의 크기가 처음에 읽은 데이터의 크기와 같거나 크다면 (데이터를 모두 수신했다면) 파일을 쓴다.
+        // 받아온 데이터의 일부만을 slice로 읽어온다.
+        fs.writeFile(
+          `./videos/${id}.jpg`,
+          connections[id].data.slice(4, connections[id].size + 4),
+          (err) => {
+            if (err) throw err;
+            console.log(`Frame saved for client ${id}!`);
+          }
+        );
 
-      // 새로운 frame 데이터 받아들이기 위해 connections[id].size 값 초기화
-      connections[id].size = 0;
+        // 파일로 쓴 부분을 제외한 나머지 데이터를 보관한다
+        connections[id].data = connections[id].data.slice(
+          connections[id].size + 4
+        );
+
+        // 다음 데이터를 위해 데이터의 크기를 다시 0으로 설정한다
+        connections[id].size = 0;
+      }
     }
   });
 
