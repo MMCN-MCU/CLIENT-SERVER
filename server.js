@@ -58,15 +58,103 @@ app.get("/videos/:id", (req, res) => {
   res.sendFile(__dirname + `/videos/${id}.jpg`);
 });
 
-// HTTP 연결 포트 정의
+// HTTP 연결 포트 정의 + 0.1초에 한번 씩 이미지 데이터 믹싱
 app.listen(port, () => {
+  // IP, PORT 보여주기
   console.log(`Web server listening on ${IP}:${port}`);
+
+  // 이미지 믹싱하는 함수
+  const mixImages = (imagePaths, jimpImages) => {
+    // videos 디렉터리 주소
+    const VIDEOS_DIR = "./videos/";
+
+    // 이미지 존재할 때 믹싱
+    if (imagePaths.length > 0) {
+      // 이미지 로드 및 Jimp 객체 생성
+      Promise.all(
+        imagePaths.map((imagePath, idx) => {
+          return Jimp.read(VIDEOS_DIR + imagePath)
+            .then((image) => {
+              image.idx = idx;
+              jimpImages[jimpImages.length++] = image;
+            })
+            .catch((err) => {
+              console.error(`이미지 로드 중 오류 발생: ${err}`);
+            });
+        })
+      )
+        .then(() => {
+          // 이미지의 최대 가로와 세로 크기 계산
+          const maxWidth = jimpImages.reduce(
+            (width, image) => Math.max(width, image.getWidth()),
+            0
+          );
+          const maxHeight = jimpImages.reduce(
+            (height, image) => Math.max(height, image.getHeight()),
+            0
+          );
+
+          // 격자 이미지의 크기 계산
+          const gridWidth = maxWidth * 2;
+          const gridHeight = maxHeight * Math.ceil(imagePaths.length / 2);
+
+          // 격자 이미지를 담을 Jimp 캔버스 생성
+          const mergedImage = new Jimp(gridWidth, gridHeight);
+
+          // 이미지를 격자에 병합
+          jimpImages.forEach((image) => {
+            const idx = Number(image.idx);
+            const column = idx % 2;
+            const row = Math.floor(idx / 2);
+
+            const x =
+              column * maxWidth + Math.floor((maxWidth - image.getWidth()) / 2);
+            const y =
+              row * maxHeight + Math.floor((maxHeight - image.getHeight()) / 2);
+
+            mergedImage.blit(image, x, y);
+          });
+
+          // 합쳐진 이미지 저장
+          mergedImage.write("./videos/mixed.jpg", (err) => {
+            if (err) {
+              console.error(`이미지 저장 중 오류 발생: ${err}`);
+            } else {
+              console.log("image mixed");
+            }
+          });
+        })
+        .catch((err) => {
+          console.error(`이미지 로드 중 오류 발생: ${err}`);
+        });
+    }
+  };
+
+  // 이미지 믹싱 0.1초에 한번
+  setInterval(() => {
+    const images = fs
+      .readdirSync("./videos")
+      .filter((image) => image.slice(-3) === "jpg")
+      .filter((image) => !image.includes("mixed"));
+
+    // 이미지를 담을 Jimp 객체 배열
+    const jimpImages = [];
+
+    // 이미지 믹싱
+    mixImages(images, jimpImages);
+  }, 2000);
 });
 
 // TCP socket 통신 포트 정의
 server.listen(port + 1, () => {
   // 현재 LocalHost IP 주소와 Port 번호 노출
   console.log(`TCP Server listening on ${IP}:${port + 1}`);
+
+  setInterval(() => {
+    const images = fs
+      .readdirSync("./videos")
+      .filter((image) => image.slice(-3) === "jpg");
+  }, 100);
 });
 
 // TCP 서버 설정 (3001 번 포트로 열려있다)
@@ -130,70 +218,3 @@ server.on("connection", (socket) => {
     console.log(`Client disconnected: ${id}`);
   });
 });
-
-//** 이미지 병합하는 코드 구성 완료 (또다른 프로세스에서 0.1초에 한번씩 병합하여 보내도록 구현해야 할 듯함 + 병합 시 순서가 결정되어야 함) */
-const imagePaths = [
-  "./videos/2.jpg",
-  "./videos/3.jpg",
-  "./videos/4.jpg",
-  "./videos/5.jpg",
-];
-
-// 이미지를 담을 Jimp 객체 배열
-const jimpImages = [];
-
-// 이미지 로드 및 Jimp 객체 생성
-Promise.all(
-  imagePaths.map((imagePath) => {
-    return Jimp.read(imagePath)
-      .then((image) => {
-        jimpImages.push(image);
-      })
-      .catch((err) => {
-        console.error(`이미지 로드 중 오류 발생: ${err}`);
-      });
-  })
-)
-  .then(() => {
-    // 이미지의 최대 가로와 세로 크기 계산
-    const maxWidth = jimpImages.reduce(
-      (width, image) => Math.max(width, image.getWidth()),
-      0
-    );
-    const maxHeight = jimpImages.reduce(
-      (height, image) => Math.max(height, image.getHeight()),
-      0
-    );
-
-    // 격자 이미지의 크기 계산
-    const gridWidth = maxWidth * 2;
-    const gridHeight = maxHeight * 2;
-
-    // 격자 이미지를 담을 Jimp 캔버스 생성
-    const mergedImage = new Jimp(gridWidth, gridHeight);
-
-    // 이미지를 격자에 병합
-    jimpImages.forEach((image, index) => {
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-
-      const x =
-        column * maxWidth + Math.floor((maxWidth - image.getWidth()) / 2);
-      const y =
-        row * maxHeight + Math.floor((maxHeight - image.getHeight()) / 2);
-
-      mergedImage.blit(image, x, y);
-    });
-
-    // 합쳐진 이미지 저장
-    mergedImage.write("merged.jpg", (err) => {
-      if (err) {
-        console.error(`이미지 저장 중 오류 발생: ${err}`);
-      } else {
-        console.log("이미지가 성공적으로 합쳐졌습니다.");
-      }
-    });
-  })
-  .catch((err) => {
-    console.error(`이미지 로드 중 오류 발생: ${err}`);
-  });
